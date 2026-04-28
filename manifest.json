@@ -1,0 +1,17 @@
+{
+  "name": "Sats Converter by OrangeTill",
+  "short_name": "Sats ₿",
+  "description": "Free Bitcoin ↔ currency converter. No signup, no ads, no tracking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F0F0F",
+  "theme_color": "#E8720C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://orangetill.com/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
