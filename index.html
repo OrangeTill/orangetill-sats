@@ -10,6 +10,10 @@
 <meta property="og:description" content="Free Bitcoin ↔ currency converter. 54 currencies. No signup, no ads, no tracking.">
 <meta property="og:type" content="website">
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="https://orangetill.com/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="https://orangetill.com/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="https://orangetill.com/favicon-16x16.png">
+<link rel="shortcut icon" href="https://orangetill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://orangetill.com/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -607,19 +611,31 @@ function setPriceError() {
 }
 
 // ── YEAR AGO COMPARISON ──
+// Uses /market_chart/range (free) instead of /history (now restricted).
 async function fetchYearAgo() {
   if (!btcPriceUSD) return;
   try {
     const d = new Date(); d.setFullYear(d.getFullYear() - 1);
-    const dd = `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${dd}&localization=false`);
+    const fromTs = Math.floor(d.getTime() / 1000) - 86400;
+    const toTs   = Math.floor(d.getTime() / 1000) + 86400;
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=usd&from=${fromTs}&to=${toTs}`);
     if (res.ok) {
       const data = await res.json();
-      const oldPrice = data?.market_data?.current_price?.usd;
-      if (oldPrice) {
-        const oldSats = Math.round(1e8 / oldPrice);
-        document.getElementById('year-sats-old').textContent = oldSats.toLocaleString('en-US');
-        document.getElementById('year-compare').style.display = 'flex';
+      const prices = data?.prices;
+      if (prices && prices.length) {
+        // Take the price closest to exactly one year ago
+        const targetMs = d.getTime();
+        let oldPrice = prices[0][1];
+        let closestDiff = Math.abs(prices[0][0] - targetMs);
+        for (const p of prices) {
+          const diff = Math.abs(p[0] - targetMs);
+          if (diff < closestDiff) { oldPrice = p[1]; closestDiff = diff; }
+        }
+        if (oldPrice && oldPrice > 0) {
+          const oldSats = Math.round(1e8 / oldPrice);
+          document.getElementById('year-sats-old').textContent = oldSats.toLocaleString('en-US');
+          document.getElementById('year-compare').style.display = 'flex';
+        }
       }
     }
   } catch(e) {}
@@ -754,27 +770,62 @@ function loadFromURL() {
 }
 
 // ── HISTORY CALCULATOR ──
+// Uses CoinGecko /market_chart/range (still free, no key required) instead of
+// the /history endpoint which is now restricted to paid plans.
 async function calcHistory() {
   const amount = parseFloat(document.getElementById('h-amount').value);
   const dateVal = document.getElementById('h-date').value;
-  if (!amount || !dateVal) { alert('Please enter an amount and a date.'); return; }
-  const d = new Date(dateVal);
-  const dd = `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
   const btn = document.querySelector('.calc-btn');
+  if (!amount || !dateVal) { alert('Please enter an amount and a date.'); return; }
+
+  // Bitcoin's genesis-ish price data starts July 2010; reject anything earlier.
+  const d = new Date(dateVal + 'T12:00:00Z'); // noon UTC, avoids timezone edge-day issues
+  const earliest = new Date('2010-07-18T00:00:00Z');
+  const today = new Date();
+  if (d < earliest) {
+    alert('Bitcoin price data only goes back to mid-2010. Please pick a later date.');
+    return;
+  }
+  if (d > today) {
+    alert('That date is in the future! Please pick a past date.');
+    return;
+  }
+
   btn.textContent = 'Calculating...';
   btn.disabled = true;
+
   try {
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${dd}&localization=false`);
-    if (!res.ok) throw new Error('no data');
+    // market_chart/range wants UNIX seconds. Pull a 48-hour window so we always
+    // catch at least one daily candle even if CoinGecko shifts the timestamp.
+    const fromTs = Math.floor(d.getTime() / 1000) - 86400;
+    const toTs   = Math.floor(d.getTime() / 1000) + 86400;
+    const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=usd&from=${fromTs}&to=${toTs}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      if (res.status === 429) throw new Error('Rate limited — please try again in a minute.');
+      throw new Error('Price data unavailable for that date. Try a different date.');
+    }
     const data = await res.json();
-    const oldPrice = data?.market_data?.current_price?.usd;
-    if (!oldPrice) throw new Error('no price');
+    const prices = data?.prices;
+    if (!prices || !prices.length) throw new Error('No price data returned for that date.');
+
+    // Find the price point closest to the requested date.
+    const targetMs = d.getTime();
+    let closest = prices[0];
+    let closestDiff = Math.abs(prices[0][0] - targetMs);
+    for (const p of prices) {
+      const diff = Math.abs(p[0] - targetMs);
+      if (diff < closestDiff) { closest = p; closestDiff = diff; }
+    }
+    const oldPrice = closest[1];
+    if (!oldPrice || oldPrice <= 0) throw new Error('No price data returned for that date.');
+
     const btcBought = amount / oldPrice;
     const satsAcquired = Math.round(btcBought * 1e8);
     const valueNow = btcBought * (btcPriceUSD || oldPrice);
     const gain = valueNow - amount;
     const gainPct = ((gain / amount) * 100).toFixed(1);
-    const dateLabel = d.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+    const dateLabel = d.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric', timeZone:'UTC'});
     document.getElementById('hr-invested').textContent = amount.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     document.getElementById('hr-date-label').textContent = dateLabel;
     document.getElementById('hr-sats-then').textContent = satsAcquired.toLocaleString('en-US') + ' sats';
@@ -784,10 +835,11 @@ async function calcHistory() {
     gainEl.className = 'hr-gain ' + (gain >= 0 ? 'up' : 'down');
     document.getElementById('history-result').classList.add('show');
   } catch(e) {
-    alert('Could not fetch price data for that date. Try a date after 2013.');
+    alert(e.message || 'Could not fetch price data for that date. Please try again.');
+  } finally {
+    btn.textContent = 'Calculate →';
+    btn.disabled = false;
   }
-  btn.textContent = 'Calculate →';
-  btn.disabled = false;
 }
 
 // ── FACTS TICKER ──
