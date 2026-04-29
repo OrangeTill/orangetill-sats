@@ -9,6 +9,22 @@
   "orientation": "portrait-primary",
   "icons": [
     {
+      "src": "https://orangetill.com/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "https://orangetill.com/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "https://orangetill.com/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
       "src": "https://orangetill.com/favicon.ico",
       "sizes": "any",
       "type": "image/x-icon"
