@@ -404,6 +404,912 @@
         <div class="hr-sub" style="margin-bottom:12px;">That was your stack. Here's what it's worth today:</div>
         <div class="hr-num" id="hr-value-now"></div>
         <div class="hr-gain" id="hr-gain"></div>
+        <div class="history-disclaimer">Price data sourced from Mempool.space. Past performance does not indicate future results. This is not financial advice.</div>
+      </div>
+    </div>
+    <div class="facts-ticker">
+      <span class="facts-icon">📖</span>
+      <span class="facts-text" id="facts-text-2">Did you know? The first real-world Bitcoin transaction was 10,000 BTC for two pizzas in 2010.</span>
+    </div>
+  </div><!-- end tab-history -->
+
+</div><!-- end converter-wrap -->
+
+<!-- HODL PEEK -->
+<div id="hodl-peek" onclick="window.open('https://orangetill.com/learn.html','_blank')" title="Learn about Bitcoin">
+  <svg viewBox="20 28 160 82" xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" style="display:block;">
+    <ellipse cx="100" cy="88" rx="52" ry="48" fill="#E8720C"/>
+    <ellipse cx="62" cy="52" rx="14" ry="20" fill="#E8720C" transform="rotate(-15 62 52)"/>
+    <ellipse cx="62" cy="53" rx="7" ry="12" fill="#FDE8CC" transform="rotate(-15 62 53)"/>
+    <ellipse cx="138" cy="52" rx="14" ry="20" fill="#E8720C" transform="rotate(15 138 52)"/>
+    <ellipse cx="138" cy="53" rx="7" ry="12" fill="#FDE8CC" transform="rotate(15 138 53)"/>
+    <ellipse cx="83" cy="88" rx="12" ry="10" fill="#F5C842"/>
+    <ellipse cx="117" cy="88" rx="12" ry="10" fill="#F5C842"/>
+    <ellipse cx="84" cy="89" rx="6" ry="5" fill="#1A0800"/>
+    <ellipse cx="118" cy="89" rx="6" ry="5" fill="#1A0800"/>
+    <circle cx="87" cy="86" r="2" fill="white"/>
+    <circle cx="121" cy="86" r="2" fill="white"/>
+    <ellipse cx="100" cy="100" rx="5" ry="3.5" fill="#E87090"/>
+    <line x1="55" y1="98" x2="88" y2="100" stroke="#FDE8CC" stroke-width="1.2" opacity="0.8"/>
+    <line x1="53" y1="103" x2="87" y2="103" stroke="#FDE8CC" stroke-width="1.2" opacity="0.8"/>
+    <line x1="145" y1="98" x2="112" y2="100" stroke="#FDE8CC" stroke-width="1.2" opacity="0.8"/>
+    <line x1="147" y1="103" x2="113" y2="103" stroke="#FDE8CC" stroke-width="1.2" opacity="0.8"/>
+    <rect x="72" y="128" width="56" height="12" rx="6" fill="#1A0800"/>
+    <circle cx="100" cy="110" r="9" fill="#F5C842"/>
+    <text x="100" y="114" font-family="Arial Black,sans-serif" font-size="9" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="#1A0800">₿</text>
+  </svg>
+</div>
+
+<footer>
+  <div class="footer-logo">Orange<span>Till</span></div>
+  <div class="footer-links">
+    <a href="https://orangetill.com">Home</a>
+    <a href="https://orangetill.com/learn.html">Learn Bitcoin</a>
+    <a href="https://orangetill.com/pricing.html">Accept Crypto</a>
+    <a href="https://orangetill.io">Open App</a>
+  </div>
+  <div class="footer-copy">Free forever &middot; Built by OrangeTill &middot; Sofia Brands LLC &middot; New Hampshire, USA</div>
+</footer>
+
+<script>
+// ── STATE ──
+let btcPriceUSD = null;
+let btcPriceCur = null;
+let currentCurrency = 'usd';
+let lastFetched = null;
+let deferredInstall = null;
+let activeInput = 'fiat';
+let isOnline = navigator.onLine;
+let factsInterval = null;
+let factsIndex = 0;
+let isDark = true;
+
+// ── CURRENCY CONFIG ──
+const SYM = {
+  usd:'$',cad:'CA$',mxn:'MX$',brl:'R$',ars:'$',clp:'CL$',cop:'COL$',pen:'S/',ves:'Bs.',
+  eur:'€',gbp:'£',chf:'CHF',nok:'kr',sek:'kr',dkk:'kr',pln:'zł',czk:'Kč',huf:'Ft',ron:'lei',
+  try:'₺',rub:'₽',uah:'₴',bgn:'лв',
+  ils:'₪',aed:'AED',sar:'SAR',kwd:'KWD',qar:'QAR',bhd:'BD',
+  jpy:'¥',cny:'¥',hkd:'HK$',krw:'₩',inr:'₹',sgd:'S$',aud:'A$',nzd:'NZ$',php:'₱',
+  thb:'฿',myr:'RM',idr:'Rp',twd:'NT$',pkr:'₨',bdt:'৳',vnd:'₫',
+  ngn:'₦',zar:'R',kes:'KSh',ghs:'₵',egp:'£',mad:'MAD',tzs:'TSh'
+};
+const NO_DEC = new Set(['jpy','krw','vnd','idr','clp','tzs']);
+const THREE_DEC = new Set(['kwd','bhd']);
+function dec(cur){return NO_DEC.has(cur)?0:THREE_DEC.has(cur)?3:2;}
+function sym(cur){return SYM[cur]||cur.toUpperCase();}
+function fmt(n,cur){return sym(cur)+n.toLocaleString('en-US',{minimumFractionDigits:dec(cur),maximumFractionDigits:dec(cur)});}
+
+// ── FACTS ──
+const FACTS = [
+  {icon:'₿', text:'There will only ever be <strong>21 million Bitcoin</strong>. About 19.7 million have been mined so far.'},
+  {icon:'⚡', text:'1 satoshi = <strong>0.00000001 BTC</strong>. Named after Bitcoin\'s pseudonymous creator, Satoshi Nakamoto.'},
+  {icon:'🍕', text:'The first real-world Bitcoin transaction was <strong>10,000 BTC for two pizzas</strong> in May 2010. Today that\'s worth hundreds of millions.'},
+  {icon:'🇸🇻', text:'El Salvador became the <strong>first country to adopt Bitcoin as legal tender</strong> in September 2021.'},
+  {icon:'🔐', text:'Bitcoin\'s security is powered by <strong>SHA-256</strong> — the same cryptographic standard used to secure US government data.'},
+  {icon:'🌍', text:'Bitcoin runs on a network of <strong>over 15,000 nodes</strong> worldwide. No single country, company, or person controls it.'},
+  {icon:'⛏️', text:'A new Bitcoin block is mined approximately every <strong>10 minutes</strong>. This has been true since 2009.'},
+  {icon:'📉', text:'Every ~4 years, Bitcoin\'s mining reward <strong>halves</strong>. This is called the halving — it\'s how Bitcoin controls its supply.'},
+  {icon:'🏦', text:'Bitcoin has no CEO, no board, and no headquarters. It is governed by <strong>open-source code and consensus</strong>.'},
+  {icon:'🧮', text:'The total supply of satoshis is <strong>2.1 quadrillion</strong> — enough for every person on Earth to hold about 260,000 sats.'},
+  {icon:'⚡', text:'The Lightning Network allows Bitcoin transactions to <strong>settle in milliseconds</strong> with fees of fractions of a cent.'},
+  {icon:'🌱', text:'Over <strong>52% of Bitcoin mining</strong> now uses sustainable energy sources, making it one of the most green-energy-intensive industries.'},
+];
+
+// ── CONTEXT COMPARISONS (sats thresholds) ──
+const CONTEXTS = [
+  {min:0, max:500, emoji:'☕', text:'That\'s a <strong>micro-tip</strong> — the kind of payment Lightning was made for.'},
+  {min:500, max:2000, emoji:'☕', text:'About the cost of a <strong>coffee in El Salvador</strong>, paid in seconds with no card fee.'},
+  {min:2000, max:10000, emoji:'🍕', text:'Getting into <strong>small meal territory</strong>. A slice of pizza in Bitcoin\'s birthplace.'},
+  {min:10000, max:50000, emoji:'🛒', text:'A solid <strong>everyday purchase</strong> — groceries, a book, a tank of gas.'},
+  {min:50000, max:100000, emoji:'📱', text:'Getting close to <strong>100K sats</strong> — a meaningful stack for any new Bitcoiner.'},
+  {min:100000, max:500000, emoji:'🎯', text:'<strong>100K+ sats</strong> — you\'re in the top tier of global Bitcoin holders by sat count.'},
+  {min:500000, max:1000000, emoji:'🔥', text:'Half a million sats. <strong>Serious stacking</strong> — that\'s half a virtual bitcoin coin.'},
+  {min:1000000, max:10000000, emoji:'🚀', text:'Over a <strong>million sats</strong> — that\'s 0.01 BTC. In many countries, a life-changing amount.'},
+  {min:10000000, max:1e12, emoji:'🏔️', text:'<strong>Whale territory</strong>. Fewer than 1 million Bitcoin addresses hold this much.'},
+];
+
+function getContext(sats) {
+  return CONTEXTS.find(c => sats >= c.min && sats < c.max) || CONTEXTS[CONTEXTS.length-1];
+}
+
+// ── THEME ──
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle('light-mode', !isDark);
+  document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('ot_sats_theme', isDark ? 'dark' : 'light');
+}
+
+// ── TABS ──
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ── PRICE FETCH ──
+async function fetchPrice(cur) {
+  const cached = localStorage.getItem('ot_sats_price_' + cur);
+  if (cached) {
+    try {
+      const p = JSON.parse(cached);
+      if (Date.now() - p.t < 300000) { // 5 min cache
+        btcPriceUSD = p.usd;
+        btcPriceCur = p.cur;
+        lastFetched = p.t;
+        updateAll();
+      }
+    } catch(e) {}
+  }
+
+  if (!isOnline) { setPriceStale(); return; }
+
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=${cur},usd`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.bitcoin) {
+        btcPriceUSD = data.bitcoin.usd || btcPriceUSD;
+        btcPriceCur = data.bitcoin[cur] || btcPriceUSD;
+        lastFetched = Date.now();
+        localStorage.setItem('ot_sats_price_' + cur, JSON.stringify({usd:btcPriceUSD, cur:btcPriceCur, t:lastFetched}));
+        updateAll();
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Mempool fallback
+  try {
+    const res = await fetch('https://mempool.space/api/v1/prices');
+    if (res.ok) {
+      const data = await res.json();
+      btcPriceUSD = data.USD;
+      btcPriceCur = btcPriceUSD;
+      lastFetched = Date.now();
+      updateAll();
+      return;
+    }
+  } catch(e) {}
+
+  if (!btcPriceCur) setPriceError();
+}
+
+function updateAll() {
+  updateTicker();
+  updatePriceBar();
+  recalc();
+  fetchYearAgo();
+}
+
+function updateTicker() {
+  if (!btcPriceUSD) return;
+  const satsPerDollar = Math.round(1e8 / btcPriceUSD);
+  document.getElementById('ticker-sats').textContent = satsPerDollar.toLocaleString('en-US');
+  document.getElementById('pulse-dot').className = 'pulse-dot';
+  const ago = Math.round((Date.now() - lastFetched) / 1000);
+  document.getElementById('price-updated').textContent = ago < 10 ? 'live' : ago < 60 ? ago + 's ago' : Math.round(ago/60) + 'm ago';
+}
+
+function updatePriceBar() {
+  if (!btcPriceCur) return;
+  document.getElementById('price-display').textContent = fmt(btcPriceCur, currentCurrency);
+  document.getElementById('price-currency-label').textContent = currentCurrency.toUpperCase();
+}
+
+function setPriceStale() {
+  document.getElementById('pulse-dot').className = 'pulse-dot stale';
+  document.getElementById('price-updated').textContent = 'offline';
+}
+
+function setPriceError() {
+  document.getElementById('pulse-dot').className = 'pulse-dot err';
+  document.getElementById('ticker-sats').textContent = '—';
+  document.getElementById('price-updated').textContent = 'error';
+}
+
+// ── YEAR AGO COMPARISON ──
+// ── YEAR AGO COMPARISON ──
+// Uses the same Blockchain.info bulk historical dataset as the What If? calculator.
+// This means just one fetch on first page load benefits both features.
+async function fetchYearAgo() {
+  if (!btcPriceUSD) return;
+  try {
+    const values = await loadHistoricalPrices();
+    const d = new Date(); d.setFullYear(d.getFullYear() - 1);
+    const targetSec = Math.floor(d.getTime() / 1000);
+    const oldPrice = findPriceForDate(values, targetSec);
+    if (oldPrice && oldPrice > 0) {
+      const oldSats = Math.round(1e8 / oldPrice);
+      document.getElementById('year-sats-old').textContent = oldSats.toLocaleString('en-US');
+      document.getElementById('year-compare').style.display = 'flex';
+    }
+  } catch(e) {}
+}
+
+// ── CONVERSION ──
+function fromFiat() { activeInput = 'fiat'; recalc(); }
+function fromSats() { activeInput = 'sats'; recalc(); }
+
+function recalc() {
+  if (!btcPriceCur) return;
+  const fi = document.getElementById('fiat-input');
+  const si = document.getElementById('sats-input');
+  const fs = document.getElementById('fiat-sub');
+  const ss = document.getElementById('sats-sub');
+  const ctx = document.getElementById('context-card');
+
+  if (activeInput === 'fiat') {
+    const v = parseFloat(fi.value);
+    if (!isNaN(v) && v > 0) {
+      const sats = Math.round((v / btcPriceCur) * 1e8);
+      si.value = sats;
+      si.className = 'field-input result';
+      ss.textContent = '≈ ' + (sats/1e8).toFixed(8) + ' BTC';
+      fs.textContent = '';
+      showContext(sats);
+    } else { clearResult('sats'); ctx.style.display='none'; }
+  } else {
+    const v = parseFloat(si.value);
+    if (!isNaN(v) && v > 0) {
+      const fiat = (v / 1e8) * btcPriceCur;
+      fi.value = fiat.toFixed(dec(currentCurrency));
+      fi.className = 'field-input result';
+      fs.textContent = '≈ ' + (v/1e8).toFixed(8) + ' BTC';
+      ss.textContent = '';
+      showContext(v);
+    } else { clearResult('fiat'); ctx.style.display='none'; }
+  }
+}
+
+function showContext(sats) {
+  const c = getContext(sats);
+  const ctx = document.getElementById('context-card');
+  document.getElementById('ctx-emoji').textContent = c.emoji;
+  document.getElementById('ctx-text').innerHTML = c.text;
+  ctx.style.display = 'block';
+}
+
+function clearResult(which) {
+  const el = document.getElementById(which + '-input');
+  el.value = '';
+  el.className = 'field-input';
+  document.getElementById(which + '-sub').textContent = '';
+}
+
+function swapInputs() {
+  activeInput = activeInput === 'fiat' ? 'sats' : 'fiat';
+  recalc();
+}
+
+function setFiat(v) { document.getElementById('fiat-input').value = v; activeInput='fiat'; recalc(); }
+function setSats(v) { document.getElementById('sats-input').value = v; activeInput='sats'; recalc(); }
+
+// ── CURRENCY CHANGE ──
+function onCurrencyChange() {
+  currentCurrency = document.getElementById('currency-select').value;
+  document.getElementById('fiat-label').textContent = currentCurrency.toUpperCase() + ' Amount';
+  updateQuickBtns();
+  clearResult('fiat'); clearResult('sats');
+  document.getElementById('fiat-sub').textContent = '';
+  document.getElementById('sats-sub').textContent = '';
+  document.getElementById('context-card').style.display = 'none';
+  btcPriceCur = null;
+  document.getElementById('price-display').textContent = 'loading...';
+  fetchPrice(currentCurrency);
+}
+
+function updateQuickBtns() {
+  const s = sym(currentCurrency);
+  const btns = document.querySelectorAll('#quick-btns .quick-btn');
+  [1,5,10,25,50,100].forEach((v,i) => { if(btns[i]) btns[i].textContent = s + v; });
+}
+
+// ── SHARE ──
+function shareLink() {
+  const fi = document.getElementById('fiat-input').value;
+  const si = document.getElementById('sats-input').value;
+  const cur = currentCurrency;
+  const params = new URLSearchParams();
+  if (fi) params.set('fiat', fi);
+  if (si) params.set('sats', si);
+  params.set('cur', cur);
+  const url = window.location.origin + '/?' + params.toString();
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('share-link-btn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '🔗 Copy link'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    prompt('Copy this link:', url);
+  });
+}
+
+function shareNative() {
+  const fi = document.getElementById('fiat-input').value;
+  const si = document.getElementById('sats-input').value;
+  const cur = currentCurrency.toUpperCase();
+  const text = fi && si
+    ? `${sym(currentCurrency)}${fi} ${cur} = ${Number(si).toLocaleString()} sats — convert at sats.orangetill.com`
+    : 'Free Bitcoin converter — 54 currencies, no signup: sats.orangetill.com';
+  if (navigator.share) {
+    navigator.share({ title: 'Sats Converter', text, url: 'https://sats.orangetill.com' });
+  } else {
+    navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+  }
+}
+
+// ── URL PARAMS (shareable links) ──
+function loadFromURL() {
+  const p = new URLSearchParams(window.location.search);
+  const cur = p.get('cur');
+  const fiat = p.get('fiat');
+  const sats = p.get('sats');
+  if (cur && document.querySelector(`#currency-select option[value="${cur}"]`)) {
+    document.getElementById('currency-select').value = cur;
+    currentCurrency = cur;
+    document.getElementById('fiat-label').textContent = cur.toUpperCase() + ' Amount';
+    updateQuickBtns();
+  }
+  if (fiat) { document.getElementById('fiat-input').value = fiat; activeInput = 'fiat'; }
+  if (sats) { document.getElementById('sats-input').value = sats; activeInput = 'sats'; }
+}
+
+// ── HISTORY CALCULATOR ──
+// Uses Blockchain.info charts API (free, no key, full history from 2010).
+// Fetches the entire historical dataset once, caches in localStorage, then
+// every What If? lookup is instant with no network call.
+let historicalPriceData = null; // in-memory after first load
+
+async function loadHistoricalPrices() {
+  if (historicalPriceData) return historicalPriceData;
+
+  // Try cache first.
+  try {
+    const cached = localStorage.getItem('ot_sats_btc_history_v1');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed?.values?.length && parsed.cachedAt) {
+        // Refresh cache once a day to keep it current.
+        const ageHours = (Date.now() - parsed.cachedAt) / 3600000;
+        if (ageHours < 24) {
+          historicalPriceData = parsed.values;
+          return historicalPriceData;
+        }
+      }
+    }
+  } catch(e) {}
+
+  // Fetch fresh.
+  const res = await fetch('https://api.blockchain.info/charts/market-price?timespan=all&format=json&sampled=true&cors=true');
+  if (!res.ok) throw new Error('Could not load price history. Please try again.');
+  const data = await res.json();
+  if (!data?.values?.length) throw new Error('Could not load price history. Please try again.');
+
+  historicalPriceData = data.values; // [{x: unix_seconds, y: usd_price}, ...]
+
+  try {
+    localStorage.setItem('ot_sats_btc_history_v1', JSON.stringify({
+      cachedAt: Date.now(),
+      values: historicalPriceData
+    }));
+  } catch(e) {}
+
+  return historicalPriceData;
+}
+
+function findPriceForDate(values, targetUnixSec) {
+  // Binary search for the closest data point.
+  let lo = 0, hi = values.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (values[mid].x < targetUnixSec) lo = mid + 1;
+    else hi = mid;
+  }
+  // Compare lo and lo-1 to find closest.
+  let best = values[lo];
+  if (lo > 0 && Math.abs(values[lo-1].x - targetUnixSec) < Math.abs(values[lo].x - targetUnixSec)) {
+    best = values[lo-1];
+  }
+  return best?.y;
+}
+
+async function calcHistory() {
+  const amount = parseFloat(document.getElementById('h-amount').value);
+  const dateVal = document.getElementById('h-date').value;
+  const btn = document.querySelector('.calc-btn');
+  if (!amount || !dateVal) { alert('Please enter an amount and a date.'); return; }
+
+  // Bitcoin's earliest tradeable price was around July 2010.
+  const d = new Date(dateVal + 'T12:00:00Z');
+  const earliest = new Date('2010-07-18T00:00:00Z');
+  const today = new Date();
+  if (d < earliest) {
+    alert('Bitcoin price data only goes back to mid-2010. Please pick a later date.');
+    return;
+  }
+  if (d > today) {
+    alert('That date is in the future! Please pick a past date.');
+    return;
+  }
+
+  btn.textContent = 'Calculating...';
+  btn.disabled = true;
+
+  try {
+    const values = await loadHistoricalPrices();
+    const targetSec = Math.floor(d.getTime() / 1000);
+    const oldPrice = findPriceForDate(values, targetSec);
+    if (!oldPrice || oldPrice <= 0) {
+      throw new Error('No price data found for that date. Please try a different date.');
+    }
+
+    const btcBought = amount / oldPrice;
+    const satsAcquired = Math.round(btcBought * 1e8);
+    const valueNow = btcBought * (btcPriceUSD || oldPrice);
+    const gain = valueNow - amount;
+    const gainPct = ((gain / amount) * 100).toFixed(1);
+    const dateLabel = d.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric', timeZone:'UTC'});
+    document.getElementById('hr-invested').textContent = amount.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    document.getElementById('hr-date-label').textContent = dateLabel;
+    document.getElementById('hr-sats-then').textContent = satsAcquired.toLocaleString('en-US') + ' sats';
+    document.getElementById('hr-value-now').textContent = '$' + valueNow.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' today';
+    const gainEl = document.getElementById('hr-gain');
+    gainEl.textContent = (gain >= 0 ? '+' : '') + '$' + gain.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (' + gainPct + '%)';
+    gainEl.className = 'hr-gain ' + (gain >= 0 ? 'up' : 'down');
+    document.getElementById('history-result').classList.add('show');
+  } catch(e) {
+    alert(e.message || 'Could not load price history. Please try again.');
+  } finally {
+    btn.textContent = 'Calculate →';
+    btn.disabled = false;
+  }
+}
+
+// ── FACTS TICKER ──
+function startFacts() {
+  const tick = () => {
+    const f = FACTS[factsIndex % FACTS.length];
+    const el = document.getElementById('facts-text');
+    const el2 = document.getElementById('facts-text-2');
+    el.classList.add('fade');
+    setTimeout(() => {
+      el.innerHTML = f.text;
+      document.getElementById('facts-icon').textContent = f.icon;
+      if (el2) el2.innerHTML = f.text;
+      el.classList.remove('fade');
+      factsIndex++;
+    }, 400);
+  };
+  tick();
+  factsInterval = setInterval(tick, 7000);
+}
+
+// ── PWA INSTALL ──
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  document.getElementById('install-banner').classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').classList.add('hidden');
+});
+function triggerInstall() {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    deferredInstall.userChoice.then(() => { deferredInstall = null; });
+  }
+}
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  document.getElementById('install-banner').classList.add('hidden');
+}
+
+// ── OFFLINE DETECTION ──
+function updateOnlineStatus() {
+  isOnline = navigator.onLine;
+  const badge = document.getElementById('offline-badge');
+  if (!isOnline) {
+    badge.classList.add('show');
+    setPriceStale();
+  } else {
+    badge.classList.remove('show');
+    fetchPrice(currentCurrency);
+  }
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// ── PRICE REFRESH ──
+setInterval(() => {
+  if (lastFetched) updateTicker();
+}, 5000);
+setInterval(() => {
+  if (isOnline) fetchPrice(currentCurrency);
+}, 60000);
+
+// ── SET DATE MAX ──
+document.getElementById('h-date').max = new Date().toISOString().split('T')[0];
+
+// ── INIT ──
+const savedTheme = localStorage.getItem('ot_sats_theme');
+if (savedTheme === 'light') { isDark = false; document.body.classList.add('light-mode'); document.getElementById('theme-btn').textContent = '☀️'; }
+loadFromURL();
+fetchPrice(currentCurrency);
+startFacts();
+</script></body>
+</html>
+  html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);transition:background 0.25s,color 0.25s;}
+  body{display:flex;flex-direction:column;min-height:100vh;}
+
+  /* NAV */
+  nav{background:var(--bg);border-bottom:1px solid var(--card-border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;transition:background 0.25s;}
+  .nav-logo{font-family:'Playfair Display',serif;font-size:17px;font-weight:900;text-decoration:none;color:var(--text);letter-spacing:-0.01em;}
+  .nav-logo span{color:var(--orange);}
+  .nav-right{display:flex;gap:12px;align-items:center;}
+  .nav-links{display:flex;gap:20px;align-items:center;}
+  .nav-links a{font-size:13px;font-weight:600;color:var(--text-muted);text-decoration:none;transition:color 0.15s;}
+  .nav-links a:hover{color:var(--orange);}
+  .nav-cta{background:var(--orange)!important;color:white!important;padding:8px 16px;border-radius:50px;font-size:12px!important;}
+  .theme-btn{background:var(--card);border:1px solid var(--card-border);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all 0.15s;}
+  .theme-btn:hover{border-color:var(--orange);}
+  @media(max-width:600px){.nav-hide{display:none;}}
+
+  /* OFFLINE BADGE */
+  .offline-badge{display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#1A1410;border:1px solid rgba(234,179,8,0.4);border-radius:50px;padding:6px 16px;font-size:12px;font-weight:600;color:#EAB308;z-index:200;gap:6px;align-items:center;}
+  .offline-badge.show{display:flex;}
+
+  /* HERO */
+  .hero{text-align:center;padding:36px 24px 16px;}
+  .hero-eyebrow{font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--orange);margin-bottom:12px;}
+  .hero-title{font-family:'Playfair Display',serif;font-size:clamp(26px,6vw,46px);font-weight:900;color:var(--text);line-height:1.1;margin-bottom:10px;}
+  .hero-title em{color:var(--orange);font-style:italic;}
+  .hero-sub{font-size:14px;color:var(--text-muted);line-height:1.6;}
+
+  /* LIVE TICKER — inline in hero */
+  .ticker-inline{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .ticker-inline-row{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;}
+  .pulse-dot{width:7px;height:7px;border-radius:50%;background:#22C55E;animation:pulse 2s ease-in-out infinite;flex-shrink:0;}
+  .pulse-dot.stale{background:#EAB308;}
+  .pulse-dot.err{background:#EF4444;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .ticker-inline-label{font-size:14px;color:var(--text-muted);font-weight:500;}
+  .ticker-inline-num{font-family:'Playfair Display',serif;font-size:clamp(28px,6vw,42px);font-weight:900;color:var(--orange);line-height:1;}
+  .ticker-inline-btc{font-size:12px;color:var(--text-dim);}
+  .price-val{font-weight:700;color:var(--text-muted);}
+
+  /* YEAR COMPARE */
+  .year-compare{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text-muted);}
+  .year-compare .badge{background:rgba(34,197,94,0.15);color:#22C55E;border:1px solid rgba(34,197,94,0.25);border-radius:50px;padding:2px 9px;font-weight:700;font-size:11px;}
+
+  /* TABS */
+  .tabs-wrap{max-width:520px;margin:16px auto 0;padding:0 16px;}
+  .tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:4px;}
+  .tab-btn{flex:1;padding:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text-muted);background:transparent;border:none;border-radius:10px;cursor:pointer;transition:all 0.15s;}
+  .tab-btn.active{background:var(--orange);color:white;}
+  .tab-btn:hover:not(.active){color:var(--orange);}
+
+  /* MAIN CARD */
+  .converter-wrap{max-width:520px;margin:0 auto;padding:12px 16px 40px;flex:1;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .converter-card{background:var(--card);border:1px solid var(--card-border);border-radius:24px;padding:24px 20px;margin-bottom:12px;}
+
+  /* CURRENCY SELECT */
+  .currency-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .currency-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
+  .currency-select{flex:1;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:12px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;outline:none;transition:border-color 0.15s;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22 viewBox=%220 0 10 6%22><path d=%22M1 1l4 4 4-4%22 stroke=%22%236B6B65%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+  .currency-select:focus{border-color:var(--orange);}
+  .currency-select option,.currency-select optgroup{background:#1A1410;color:white;}
+  .light-mode .currency-select option,.light-mode .currency-select optgroup{background:#F5F3EC;color:#0F0F0F;}
+
+  /* INPUT FIELDS */
+  .fields{display:flex;flex-direction:column;gap:10px;}
+  .field-group{position:relative;}
+  .field-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+  .field-badge{background:rgba(232,114,12,0.2);color:var(--orange);font-size:9px;padding:2px 7px;border-radius:50px;letter-spacing:0.05em;}
+  .field-input{width:100%;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:14px;padding:15px 16px;font-family:'DM Sans',sans-serif;font-size:clamp(18px,4vw,24px);font-weight:700;color:var(--text);outline:none;transition:border-color 0.15s,background 0.15s;}
+  .field-input:focus{border-color:var(--orange);}
+  .field-input::placeholder{color:var(--text-dim);}
+  .field-input.result{background:rgba(232,114,12,0.08);border-color:rgba(232,114,12,0.3);color:var(--orange);}
+  .field-sub{font-size:12px;color:var(--text-dim);margin-top:4px;min-height:16px;}
+
+  /* CONTEXT CARD */
+  .context-card{background:rgba(232,114,12,0.06);border:1px solid rgba(232,114,12,0.15);border-radius:14px;padding:12px 16px;margin-top:10px;min-height:44px;transition:all 0.3s;}
+  .context-emoji{font-size:18px;margin-right:6px;}
+  .context-text{font-size:13px;color:var(--text-muted);line-height:1.5;}
+  .context-text strong{color:var(--orange);}
+
+  /* SWAP BUTTON */
+  .swap-btn{display:flex;align-items:center;justify-content:center;margin:6px auto;width:36px;height:36px;background:rgba(232,114,12,0.12);border:1.5px solid rgba(232,114,12,0.25);border-radius:50%;cursor:pointer;font-size:16px;transition:all 0.2s;color:var(--orange);}
+  .swap-btn:hover{background:rgba(232,114,12,0.25);transform:rotate(180deg);}
+
+  /* QUICK AMOUNTS */
+  .quick-card{background:var(--card);border:1px solid var(--card-border);border-radius:16px;padding:16px 18px;margin-bottom:12px;}
+  .quick-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;}
+  .quick-btns{display:flex;gap:7px;flex-wrap:wrap;}
+  .quick-btn{background:var(--input-bg);border:1px solid var(--input-border);border-radius:50px;padding:7px 13px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all 0.15s;}
+  .quick-btn:hover{background:rgba(232,114,12,0.12);border-color:var(--orange);color:var(--orange);}
+
+  /* SHARE BAR */
+  .share-bar{display:flex;gap:8px;margin-bottom:12px;}
+  .share-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:11px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all 0.15s;}
+  .share-btn:hover{border-color:var(--orange);color:var(--orange);}
+  .share-btn.copied{border-color:#22C55E;color:#22C55E;}
+
+  /* HISTORY CALC TAB */
+  .history-card{background:var(--card);border:1px solid var(--card-border);border-radius:24px;padding:24px 20px;margin-bottom:12px;}
+  .history-inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  @media(max-width:400px){.history-inputs{grid-template-columns:1fr;}}
+  .h-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+  .h-input{width:100%;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:12px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;color:var(--text);outline:none;transition:border-color 0.15s;}
+  .h-input:focus{border-color:var(--orange);}
+  .h-input::placeholder{color:var(--text-dim);}
+  .calc-btn{width:100%;background:var(--orange);color:white;border:none;border-radius:12px;padding:14px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s;margin-bottom:16px;}
+  .calc-btn:hover{background:var(--orange-deep);}
+  .history-result{display:none;background:rgba(232,114,12,0.07);border:1px solid rgba(232,114,12,0.2);border-radius:14px;padding:18px;}
+  .history-result.show{display:block;}
+  .hr-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--orange);margin-bottom:6px;}
+  .hr-num{font-family:'Playfair Display',serif;font-size:clamp(22px,5vw,32px);font-weight:900;color:var(--text);margin-bottom:4px;}
+  .hr-sub{font-size:13px;color:var(--text-muted);}
+  .hr-gain{font-size:22px;font-weight:700;margin-top:8px;}
+  .hr-gain.up{color:#22C55E;}
+  .hr-gain.down{color:#EF4444;}
+  .history-disclaimer{font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.5;}
+
+  /* FACTS TICKER */
+  .facts-ticker{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;min-height:44px;}
+  .facts-icon{font-size:16px;flex-shrink:0;}
+  .facts-text{font-size:13px;color:var(--text-muted);line-height:1.5;transition:opacity 0.4s;}
+  .facts-text.fade{opacity:0;}
+
+  /* INFO PILLS */
+  .info-pills{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;}
+  .info-pill{background:var(--card);border:1px solid var(--card-border);border-radius:50px;padding:5px 12px;font-size:11px;font-weight:600;color:var(--text-dim);}
+
+  /* INSTALL BANNER */
+  .install-card{background:linear-gradient(135deg,rgba(232,114,12,0.12),rgba(232,114,12,0.04));border:1px solid rgba(232,114,12,0.25);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:12px;margin-bottom:12px;cursor:pointer;transition:border-color 0.2s;}
+  .install-card:hover{border-color:var(--orange);}
+  .install-card.hidden{display:none;}
+  .install-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;}
+  .install-sub{font-size:12px;color:var(--text-muted);}
+
+  /* FOOTER */
+  footer{border-top:1px solid var(--card-border);padding:24px;text-align:center;}
+  .footer-logo{font-family:'Playfair Display',serif;font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;}
+  .footer-logo span{color:var(--orange);}
+  .footer-links{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+  .footer-links a{font-size:12px;color:var(--text-dim);text-decoration:none;}
+  .footer-links a:hover{color:var(--orange);}
+  .footer-copy{font-size:11px;color:var(--text-dim);}
+
+  /* HODL PEEK */
+  #hodl-peek{position:fixed;bottom:0;right:20px;width:72px;cursor:pointer;z-index:50;animation:hodl-bob 4s ease-in-out infinite;}
+  #hodl-peek:hover{transform:translateY(-10px) scale(1.05);}
+  @keyframes hodl-bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+  @media(max-width:480px){#hodl-peek{width:56px;right:12px;}}
+</style>
+</head>
+<body>
+
+<div class="offline-badge" id="offline-badge">⚡ Offline &mdash; using last known price</div>
+
+<nav>
+  <a href="https://orangetill.com" class="nav-logo">Orange<span>Till</span></a>
+  <div class="nav-right">
+    <div class="nav-links">
+      <a href="https://orangetill.com/learn.html" class="nav-hide">Learn</a>
+      <a href="https://orangetill.com/pricing.html" class="nav-hide">Pricing</a>
+      <a href="https://orangetill.io" class="nav-cta">Open App</a>
+    </div>
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">Free &middot; No signup &middot; No ads &middot; 54 currencies</div>
+  <h1 class="hero-title">Bitcoin in <em>any currency.</em></h1>
+  <p class="hero-sub">Type dollars, get sats. Type sats, get dollars. Always free.</p>
+
+  <!-- INLINE TICKER -->
+  <div class="ticker-inline">
+    <div class="ticker-inline-row">
+      <div class="pulse-dot" id="pulse-dot"></div>
+      <span class="ticker-inline-label">Right now &mdash; $1.00&nbsp;=&nbsp;</span>
+      <span class="ticker-inline-num" id="ticker-sats">—</span>
+      <span class="ticker-inline-label">&nbsp;sats</span>
+    </div>
+    <div class="year-compare" id="year-compare" style="display:none;">
+      <span>1 year ago $1 bought</span>
+      <span id="year-sats-old" class="badge">—</span>
+      <span>sats</span>
+    </div>
+    <div class="ticker-inline-btc">
+      1 BTC = <span class="price-val" id="price-display">—</span>
+      &nbsp;<span id="price-currency-label">USD</span>
+      &nbsp;&middot;&nbsp;<span id="price-updated" style="font-size:11px;opacity:0.6;">loading</span>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-wrap">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('converter',this)">⇄ Converter</button>
+    <button class="tab-btn" onclick="switchTab('history',this)">📅 What If?</button>
+  </div>
+</div>
+
+<div class="converter-wrap">
+
+  <!-- INSTALL BANNER -->
+  <div class="install-card hidden" id="install-banner" onclick="triggerInstall()">
+    <div style="font-size:24px;flex-shrink:0;">📲</div>
+    <div style="flex:1;">
+      <div class="install-title">Add to Home Screen</div>
+      <div class="install-sub">Install for offline use &mdash; works anywhere</div>
+    </div>
+    <div style="font-size:18px;color:var(--orange);">→</div>
+  </div>
+
+  <!-- CONVERTER TAB -->
+  <div class="tab-panel active" id="tab-converter">
+
+    <div class="converter-card">
+      <div class="currency-row">
+        <span class="currency-label">Currency</span>
+        <select class="currency-select" id="currency-select" onchange="onCurrencyChange()">
+          <optgroup label="🌎 Americas">
+            <option value="usd">🇺🇸 USD — US Dollar</option>
+            <option value="cad">🇨🇦 CAD — Canadian Dollar</option>
+            <option value="mxn">🇲🇽 MXN — Mexican Peso</option>
+            <option value="brl">🇧🇷 BRL — Brazilian Real</option>
+            <option value="ars">🇦🇷 ARS — Argentine Peso</option>
+            <option value="clp">🇨🇱 CLP — Chilean Peso</option>
+            <option value="cop">🇨🇴 COP — Colombian Peso</option>
+            <option value="pen">🇵🇪 PEN — Peruvian Sol</option>
+            <option value="ves">🇻🇪 VES — Venezuelan Bolívar</option>
+          </optgroup>
+          <optgroup label="🌍 Europe">
+            <option value="eur">🇪🇺 EUR — Euro</option>
+            <option value="gbp">🇬🇧 GBP — British Pound</option>
+            <option value="chf">🇨🇭 CHF — Swiss Franc</option>
+            <option value="nok">🇳🇴 NOK — Norwegian Krone</option>
+            <option value="sek">🇸🇪 SEK — Swedish Krona</option>
+            <option value="dkk">🇩🇰 DKK — Danish Krone</option>
+            <option value="pln">🇵🇱 PLN — Polish Złoty</option>
+            <option value="czk">🇨🇿 CZK — Czech Koruna</option>
+            <option value="huf">🇭🇺 HUF — Hungarian Forint</option>
+            <option value="ron">🇷🇴 RON — Romanian Leu</option>
+            <option value="try">🇹🇷 TRY — Turkish Lira</option>
+            <option value="rub">🇷🇺 RUB — Russian Ruble</option>
+            <option value="uah">🇺🇦 UAH — Ukrainian Hryvnia</option>
+            <option value="bgn">🇧🇬 BGN — Bulgarian Lev</option>
+          </optgroup>
+          <optgroup label="🌍 Middle East">
+            <option value="ils">🇮🇱 ILS — Israeli Shekel</option>
+            <option value="aed">🇦🇪 AED — UAE Dirham</option>
+            <option value="sar">🇸🇦 SAR — Saudi Riyal</option>
+            <option value="kwd">🇰🇼 KWD — Kuwaiti Dinar</option>
+            <option value="qar">🇶🇦 QAR — Qatari Riyal</option>
+            <option value="bhd">🇧🇭 BHD — Bahraini Dinar</option>
+          </optgroup>
+          <optgroup label="🌏 Asia Pacific">
+            <option value="jpy">🇯🇵 JPY — Japanese Yen</option>
+            <option value="cny">🇨🇳 CNY — Chinese Yuan</option>
+            <option value="hkd">🇭🇰 HKD — Hong Kong Dollar</option>
+            <option value="krw">🇰🇷 KRW — South Korean Won</option>
+            <option value="inr">🇮🇳 INR — Indian Rupee</option>
+            <option value="sgd">🇸🇬 SGD — Singapore Dollar</option>
+            <option value="aud">🇦🇺 AUD — Australian Dollar</option>
+            <option value="nzd">🇳🇿 NZD — New Zealand Dollar</option>
+            <option value="php">🇵🇭 PHP — Philippine Peso</option>
+            <option value="thb">🇹🇭 THB — Thai Baht</option>
+            <option value="myr">🇲🇾 MYR — Malaysian Ringgit</option>
+            <option value="idr">🇮🇩 IDR — Indonesian Rupiah</option>
+            <option value="twd">🇹🇼 TWD — Taiwan Dollar</option>
+            <option value="pkr">🇵🇰 PKR — Pakistani Rupee</option>
+            <option value="bdt">🇧🇩 BDT — Bangladeshi Taka</option>
+            <option value="vnd">🇻🇳 VND — Vietnamese Dong</option>
+          </optgroup>
+          <optgroup label="🌍 Africa">
+            <option value="ngn">🇳🇬 NGN — Nigerian Naira</option>
+            <option value="zar">🇿🇦 ZAR — South African Rand</option>
+            <option value="kes">🇰🇪 KES — Kenyan Shilling</option>
+            <option value="ghs">🇬🇭 GHS — Ghanaian Cedi</option>
+            <option value="egp">🇪🇬 EGP — Egyptian Pound</option>
+            <option value="mad">🇲🇦 MAD — Moroccan Dirham</option>
+            <option value="tzs">🇹🇿 TZS — Tanzanian Shilling</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="fields">
+        <div class="field-group">
+          <div class="field-label"><span id="fiat-label">USD Amount</span></div>
+          <input class="field-input" id="fiat-input" type="number" inputmode="decimal" placeholder="0.00" oninput="fromFiat()">
+          <div class="field-sub" id="fiat-sub"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;">
+          <button class="swap-btn" onclick="swapInputs()" title="Swap">⇅</button>
+        </div>
+        <div class="field-group">
+          <div class="field-label"><span>Satoshis</span> <span class="field-badge">sats</span></div>
+          <input class="field-input" id="sats-input" type="number" inputmode="decimal" placeholder="0" oninput="fromSats()">
+          <div class="field-sub" id="sats-sub"></div>
+        </div>
+      </div>
+
+      <!-- CONTEXT CARD -->
+      <div class="context-card" id="context-card" style="display:none;">
+        <span class="context-emoji" id="ctx-emoji"></span>
+        <span class="context-text" id="ctx-text"></span>
+      </div>
+    </div>
+
+    <!-- QUICK AMOUNTS -->
+    <div class="quick-card">
+      <div class="quick-label">Quick amounts</div>
+      <div class="quick-btns" id="quick-btns">
+        <button class="quick-btn" onclick="setFiat(1)">$1</button>
+        <button class="quick-btn" onclick="setFiat(5)">$5</button>
+        <button class="quick-btn" onclick="setFiat(10)">$10</button>
+        <button class="quick-btn" onclick="setFiat(25)">$25</button>
+        <button class="quick-btn" onclick="setFiat(50)">$50</button>
+        <button class="quick-btn" onclick="setFiat(100)">$100</button>
+        <button class="quick-btn" onclick="setSats(1000)">1K sats</button>
+        <button class="quick-btn" onclick="setSats(10000)">10K sats</button>
+        <button class="quick-btn" onclick="setSats(100000)">100K sats</button>
+        <button class="quick-btn" onclick="setSats(1000000)">1M sats</button>
+      </div>
+    </div>
+
+    <!-- SHARE BAR -->
+    <div class="share-bar">
+      <button class="share-btn" id="share-link-btn" onclick="shareLink()">🔗 Copy link</button>
+      <button class="share-btn" onclick="shareNative()">↑ Share</button>
+    </div>
+
+    <!-- FACTS TICKER -->
+    <div class="facts-ticker">
+      <span class="facts-icon" id="facts-icon">₿</span>
+      <span class="facts-text" id="facts-text">Loading Bitcoin facts...</span>
+    </div>
+
+    <!-- INFO PILLS -->
+    <div class="info-pills">
+      <span class="info-pill">1 BTC = 100,000,000 sats</span>
+      <span class="info-pill">Free forever</span>
+      <span class="info-pill">No signup</span>
+      <span class="info-pill">54 currencies</span>
+      <a href="https://orangetill.com/learn.html" target="_blank" rel="noopener" class="info-pill" style="color:var(--orange);border-color:rgba(232,114,12,0.35);background:rgba(232,114,12,0.08);text-decoration:none;">Want to learn about Bitcoin? &rarr;</a>
+    </div>
+
+  </div><!-- end tab-converter -->
+
+  <!-- HISTORY TAB -->
+  <div class="tab-panel" id="tab-history">
+    <div class="history-card">
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;line-height:1.65;">What would your investment be worth today? Enter an amount and a past date to find out.</p>
+      <div class="history-inputs">
+        <div>
+          <div class="h-label">Amount (USD)</div>
+          <input class="h-input" id="h-amount" type="number" inputmode="decimal" placeholder="100">
+        </div>
+        <div>
+          <div class="h-label">Date you bought</div>
+          <input class="h-input" id="h-date" type="date" max="">
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calcHistory()">Calculate &rarr;</button>
+      <div class="history-result" id="history-result">
+        <div class="hr-label">Your $<span id="hr-invested">0</span> on <span id="hr-date-label">that date</span></div>
+        <div class="hr-num" id="hr-sats-then"></div>
+        <div class="hr-sub" style="margin-bottom:12px;">That was your stack. Here's what it's worth today:</div>
+        <div class="hr-num" id="hr-value-now"></div>
+        <div class="hr-gain" id="hr-gain"></div>
         <div class="history-disclaimer">Price data sourced from CoinGecko historical API. Past performance does not indicate future results. This is not financial advice.</div>
       </div>
     </div>
