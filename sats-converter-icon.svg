@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 340" width="340" height="340">
+  <rect x="0" y="0" width="340" height="340" rx="76" fill="#E8720C"/>
+  <text x="170" y="70" font-family="'DM Sans','Helvetica Neue',Arial,sans-serif" font-size="32" text-anchor="middle" fill="#FFFFFF" letter-spacing="1.5"><tspan font-weight="700">ORANGE</tspan><tspan font-weight="400">TILL</tspan></text>
+  <text x="168" y="218" font-family="'Arial Black','Helvetica Black',sans-serif" font-size="148" font-weight="900" text-anchor="middle" fill="#FFFFFF">₿</text>
+  <text x="170" y="292" font-family="'Playfair Display',Georgia,serif" font-size="30" font-weight="500" text-anchor="middle" fill="#FFFFFF">Sats <tspan font-family="'Arial Black','Helvetica Black',sans-serif" font-weight="900">₿</tspan> Converter</text>
+</svg>
