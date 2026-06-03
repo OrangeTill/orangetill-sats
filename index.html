@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sats Converter — Free Bitcoin Calculator | OrangeTill</title>
-<meta name="description" content="Free Bitcoin to any currency converter. Type dollars, get sats. Type sats, get dollars. 54 currencies. No signup, no ads.">
+<meta name="description" content="Free Bitcoin to any currency converter. Type dollars, get sats. Type sats, get dollars. 52 currencies. No signup, no ads.">
 <meta name="theme-color" content="#E8720C">
 <meta property="og:title" content="Sats Converter — Free Bitcoin Calculator">
-<meta property="og:description" content="Free Bitcoin ↔ currency converter. 54 currencies. No signup, no ads, no tracking.">
+<meta property="og:description" content="Free Bitcoin ↔ currency converter. 52 currencies. No signup, no ads, no tracking.">
 <meta property="og:type" content="website">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/svg+xml" href="/sats-converter-icon.svg">
@@ -212,7 +212,7 @@
 </nav>
 
 <div class="hero">
-  <div class="hero-eyebrow">Free &middot; No signup &middot; No ads &middot; 54 currencies</div>
+  <div class="hero-eyebrow">Free &middot; No signup &middot; No ads &middot; 52 currencies</div>
   <h1 class="hero-title">Bitcoin in <em>any currency.</em></h1>
   <p class="hero-sub">Type dollars, get sats. Type sats, get dollars. Always free.</p>
 
@@ -414,7 +414,7 @@
       <span class="info-pill">1 BTC = 100,000,000 sats</span>
       <span class="info-pill">Free forever</span>
       <span class="info-pill">No signup</span>
-      <span class="info-pill">54 currencies</span>
+      <span class="info-pill">52 currencies</span>
       <a href="https://orangetill.com/learn.html" target="_blank" rel="noopener" class="info-pill" style="color:var(--orange);border-color:rgba(232,114,12,0.35);background:rgba(232,114,12,0.08);text-decoration:none;">Want to learn about Bitcoin? &rarr;</a>
     </div>
 
@@ -815,7 +815,7 @@ function shareNative() {
   const cur = currentCurrency.toUpperCase();
   const text = fi && si
     ? `${sym(currentCurrency)}${fi} ${cur} = ${Number(si).toLocaleString()} sats — convert at sats.orangetill.com`
-    : 'Free Bitcoin converter — 54 currencies, no signup: sats.orangetill.com';
+    : 'Free Bitcoin converter — 52 currencies, no signup: sats.orangetill.com';
   if (navigator.share) {
     navigator.share({ title: 'Sats Converter', text, url: 'https://sats.orangetill.com' });
   } else {
